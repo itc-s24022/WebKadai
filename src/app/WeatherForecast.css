@@ -1,0 +1,128 @@
+/* WeatherForecast.css */
+
+/* 全体のコンテナ */
+.weather-container {
+    text-align: center;
+    padding: 30px;
+    background: linear-gradient(to bottom, #87CEFA, #f0f8ff);
+    min-height: 100vh;
+    color: #333;
+  }
+  
+  /* タイトルのスタイル */
+  .title {
+    font-size: 2.2rem; /* タイトルを大きく */
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #111;
+  }
+  
+  /* 各天気カードのスタイル */
+  .weather-card {
+    background: white;
+    padding: 25px;
+    border-radius: 15px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+    max-width: 400px; /* 幅を少し広げる */
+    margin: auto;
+    transition: opacity 0.5s ease-in-out;
+  }
+  
+  /* フェードインアニメーション */
+  .fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  /* 日付のスタイル */
+  .date {
+    font-size: 1.8rem; /* 日付を大きく */
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: #000;
+  }
+  
+  /* 天気アイコンのスタイル */
+  .weather-icon {
+    margin: 15px 0;
+    font-size: 3rem; /* アイコンを大きく */
+    color: #ff9800;
+  }
+  
+  /* 午前と午後の天気情報 */
+  .weather-details {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  /* 午前のスタイル */
+  .morning {
+    width: 48%; /* 枠を少し広く */
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.4rem; /* 文字サイズをアップ */
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* 午後のスタイル */
+  .afternoon {
+    width: 48%; /* 枠を少し広く */
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.4rem; /* 文字サイズをアップ */
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* 晴れの場合の背景色 */
+  .sunny {
+    background-color: #ffcc00; /* 明るいオレンジ */
+    color: #fff;
+  }
+  
+  /* 曇りの場合の背景色 */
+  .cloudy {
+    background-color: #b0c4de; /* 淡い灰色 */
+    color: #000;
+  }
+  
+  /* 雨の場合の背景色 */
+  .rainy {
+    background-color: #00bfff; /* 青 */
+    color: #fff;
+  }
+  
+  /* 雪の場合の背景色 */
+  .snowy {
+    background-color: #add8e6; /* 薄い青 */
+    color: #000;
+  }
+  
+  /* ミストの場合の背景色 */
+  .mist {
+    background-color: #d3d3d3; /* 明るい灰色 */
+    color: #000;
+  }
+  
+  /* 時間ラベルのスタイル */
+  .time-label {
+    font-weight: bold;
+    font-size: 1.5rem; /* ラベルも大きく */
+    color: #000;
+  }
+  
+  /* ローディングインジケータのスタイル */
+  .loading {
+    font-size: 1.5rem;
+    text-align: center;
+    margin-top: 20px;
+    color: #222;
+  }
+  
