@@ -2,8 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSun, faCloud, faCloudRain, faSnowflake, faSmog, faCloudSun, IconDefinition } from "@fortawesome/free-solid-svg-icons";
-import "./WeatherForecast.css"; // CSSファイルを読み込む
+import {
+  faSun,
+  faCloud,
+  faCloudRain,
+  faSnowflake,
+  faSmog,
+  faCloudSun,
+  IconDefinition,
+} from "@fortawesome/free-solid-svg-icons";
+import "bootstrap/dist/css/bootstrap.min.css";
+import styles from "./WeatherForecast.module.css";
 
 interface WeatherData {
   date: string;
@@ -18,21 +27,46 @@ interface DailyWeather {
   afternoon?: WeatherData;
 }
 
-// 天気データ取得
-const fetchWeatherForecast = async (city: string): Promise<DailyWeather[]> => {
+interface Forecast {
+  dt: number;
+  main: { temp: number };
+  weather: { main: string }[];
+}
+
+interface ForecastResponse {
+  city: { name: string };
+  list: Forecast[];
+}
+
+interface ForecastResult {
+  location: string;
+  dailyWeather: DailyWeather[];
+}
+
+// 天気予報データの取得関数
+const fetchWeatherForecast = async (
+  lat?: number,
+  lon?: number,
+  fallbackCity: string = "Tokyo"
+): Promise<ForecastResult> => {
   const API_KEY = process.env.NEXT_PUBLIC_OPENWEATHERMAP_API_KEY;
-  const url = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric&lang=ja`;
+  let url = "";
+
+  if (lat !== undefined && lon !== undefined) {
+    url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=ja`;
+  } else {
+    url = `https://api.openweathermap.org/data/2.5/forecast?q=${fallbackCity}&appid=${API_KEY}&units=metric&lang=ja`;
+  }
 
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error("天気情報の取得に失敗しました");
-    const data = await res.json();
+    const data: ForecastResponse = await res.json();
 
     const dailyWeatherMap = new Map<string, DailyWeather>();
-
-    data.list.forEach((forecast: any) => {
+    data.list.forEach((forecast: Forecast) => {
       const dateObj = new Date(forecast.dt * 1000);
-      const dateStr = dateObj.toISOString().split("T")[0]; // YYYY-MM-DD
+      const dateStr = dateObj.toISOString().split("T")[0];
       const hour = dateObj.getHours();
 
       const weatherInfo: WeatherData = {
@@ -54,23 +88,18 @@ const fetchWeatherForecast = async (city: string): Promise<DailyWeather[]> => {
       }
     });
 
-    return Array.from(dailyWeatherMap.values());
+    return {
+      location: data.city.name,
+      dailyWeather: Array.from(dailyWeatherMap.values()),
+    };
   } catch (error) {
     console.error(error);
-    return [];
+    return { location: fallbackCity, dailyWeather: [] };
   }
 };
 
-// 天気アイコン取得
-const getWeatherIcon = (morning?: string, afternoon?: string): IconDefinition => {
-  if (morning === afternoon) {
-    return getSingleWeatherIcon(morning);
-  }
-  return faCloudSun; // 午前と午後が違う場合、曇り/晴れのアイコン
-};
-
-// 個別天気アイコン
-const getSingleWeatherIcon = (weather?: string): IconDefinition => {
+// 天気に応じたアイコンの選択
+const getWeatherIcon = (weather?: string): IconDefinition => {
   switch (weather) {
     case "Clear":
       return faSun;
@@ -90,67 +119,100 @@ const getSingleWeatherIcon = (weather?: string): IconDefinition => {
   }
 };
 
-export default function WeatherForecast() {
-  const [weatherData, setWeatherData] = useState<DailyWeather[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const city = "Tokyo";
+// 天気に応じた色を返す関数
+const getWeatherColor = (weather?: string): string => {
+  switch (weather) {
+    case "Clear":
+      return "#FFD700"; // ゴールド（晴れ）
+    case "Clouds":
+      return "#B0C4DE"; // ライトスチールブルー（曇り）
+    case "Rain":
+      return "#1E90FF"; // ドジャーブルー（雨）
+    case "Snow":
+      return "#ADD8E6"; // ライトブルー（雪）
+    case "Mist":
+    case "Fog":
+      return "#696969"; // ディムグレー（霧）
+    case "Drizzle":
+      return "#87CEFA"; // ライトスカイブルー（霧雨）
+    default:
+      return "#808080"; // グレー（その他）
+  }
+};
 
+export default function WeatherForecast() {
+  const [forecastResult, setForecastResult] = useState<ForecastResult | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // GPS で現在位置を取得して天気情報を取得
   useEffect(() => {
-    fetchWeatherForecast(city).then(setWeatherData);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          fetchWeatherForecast(latitude, longitude).then(setForecastResult);
+        },
+        (error) => {
+          console.error("位置情報の取得に失敗しました:", error);
+          // 位置情報が取得できない場合は、デフォルトの都市を使用
+          fetchWeatherForecast(undefined, undefined).then(setForecastResult);
+        }
+      );
+    } else {
+      // ブラウザが位置情報に対応していない場合
+      fetchWeatherForecast(undefined, undefined).then(setForecastResult);
+    }
   }, []);
 
+  // 天気情報の自動切り替え（5秒ごと）
   useEffect(() => {
-    if (weatherData.length === 0) return;
+    if (!forecastResult || forecastResult.dailyWeather.length === 0) return;
 
     const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => (prevIndex + 1) % weatherData.length);
-    }, 3000); // 3秒ごとに次の日へ
+      setCurrentIndex((prevIndex) =>
+        (prevIndex + 1) % forecastResult.dailyWeather.length
+      );
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [weatherData]);
+  }, [forecastResult]);
 
-  if (weatherData.length === 0) return <p className="loading">天気情報を取得中...</p>;
+  if (!forecastResult || forecastResult.dailyWeather.length === 0)
+    return <p className="text-center mt-5">🌤 天気情報を取得中...</p>;
 
-  const today = weatherData[currentIndex];
+  const today = forecastResult.dailyWeather[currentIndex];
+  const currentWeather = today.morning?.weather || today.afternoon?.weather;
 
   return (
-    <div className="weather-container">
-      <h2 className="title">📅 天気予報</h2>
-      <div className="weather-card fade-in">
-        <p className="date">{today.date}</p>
-
-        {/* 天気アイコン（午前 + 午後） */}
-        <div className="weather-icon">
-          <FontAwesomeIcon icon={getWeatherIcon(today.morning?.weather, today.afternoon?.weather)} size="4x" />
-        </div>
-
-        {/* 午前・午後の詳細 */}
-        <div className="weather-details">
-          <div className="morning">
-            <p className="time-label">🌅 午前</p>
-            {today.morning ? (
-              <>
-                <p>{today.morning.weather}</p>
-                <p>{today.morning.temp}℃</p>
-              </>
-            ) : (
-              <p>データなし</p>
-            )}
-          </div>
-
-          <div className="afternoon">
-            <p className="time-label">🌇 午後</p>
-            {today.afternoon ? (
-              <>
-                <p>{today.afternoon.weather}</p>
-                <p>{today.afternoon.temp}℃</p>
-              </>
-            ) : (
-              <p>データなし</p>
-            )}
+    <div className={`container-fluid text-center vh-100 ${styles.bg}`}>
+      <h1 className="my-4 display-3">🌎 {forecastResult.location} の天気予報</h1>
+      <div
+        className="card shadow-lg rounded-4 bg-light bg-opacity-75 mx-auto"
+        style={{ maxWidth: "700px" }}
+      >
+        <div className="card-body">
+          <h2 className="display-4 fw-bold">{today.date}</h2>
+          <FontAwesomeIcon
+            icon={getWeatherIcon(currentWeather)}
+            color={getWeatherColor(currentWeather)}
+            size="8x"
+            className="my-4"
+          />
+          <div className="d-flex justify-content-around mt-4">
+            <div>
+              <p className="fw-bold fs-4">🌅 午前</p>
+              <p className="fs-5">{today.morning?.weather || "--"}</p>
+              <p className="fs-3">{today.morning?.temp ?? "--"}℃</p>
+            </div>
+            <div>
+              <p className="fw-bold fs-4">🌇 午後</p>
+              <p className="fs-5">{today.afternoon?.weather || "--"}</p>
+              <p className="fs-3">{today.afternoon?.temp ?? "--"}℃</p>
+            </div>
           </div>
         </div>
       </div>
+      <footer className="mt-4 fs-5">2025 © WeatherApp</footer>
     </div>
   );
 }
