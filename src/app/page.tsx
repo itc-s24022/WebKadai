@@ -10,6 +10,7 @@ import {
   faSmog,
   faCloudSun,
   IconDefinition,
+  faSearch, // 検索アイコンなど
 } from "@fortawesome/free-solid-svg-icons";
 import "bootstrap/dist/css/bootstrap.min.css";
 import styles from "./WeatherForecast.module.css";
@@ -144,7 +145,10 @@ export default function WeatherForecast() {
   const [forecastResult, setForecastResult] = useState<ForecastResult | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // GPS で現在位置を取得して天気情報を取得
+  // 追加: ユーザーが入力する都市名
+  const [city, setCity] = useState("");
+
+  // GPS で現在位置を取得して天気情報を取得（自動）
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -155,12 +159,12 @@ export default function WeatherForecast() {
         (error) => {
           console.error("位置情報の取得に失敗しました:", error);
           // 位置情報が取得できない場合は、デフォルトの都市を使用
-          fetchWeatherForecast(undefined, undefined).then(setForecastResult);
+          fetchWeatherForecast().then(setForecastResult);
         }
       );
     } else {
       // ブラウザが位置情報に対応していない場合
-      fetchWeatherForecast(undefined, undefined).then(setForecastResult);
+      fetchWeatherForecast().then(setForecastResult);
     }
   }, []);
 
@@ -177,8 +181,34 @@ export default function WeatherForecast() {
     return () => clearInterval(interval);
   }, [forecastResult]);
 
+  // 追加: 手動で都市名を指定して天気情報を取得
+  const handleFetchByCity = () => {
+    if (!city) return;
+    fetchWeatherForecast(undefined, undefined, city).then(setForecastResult);
+  };
+
   if (!forecastResult || forecastResult.dailyWeather.length === 0)
-    return <p className="text-center mt-5">🌤 天気情報を取得中...</p>;
+    return (
+      <div className="text-center mt-5">
+        <p>🌤 天気情報を取得中...</p>
+        {/* 手動入力欄を先に表示しておく */}
+        <div className="mx-auto mt-3" style={{ maxWidth: "350px" }}>
+          <div className="input-group">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="都市名を入力 (例: Tokyo)"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+            />
+            <button className="btn btn-primary" onClick={handleFetchByCity}>
+              <FontAwesomeIcon icon={faSearch} className="me-2" />
+              天気を取得
+            </button>
+          </div>
+        </div>
+      </div>
+    );
 
   const today = forecastResult.dailyWeather[currentIndex];
   const currentWeather = today.morning?.weather || today.afternoon?.weather;
@@ -186,6 +216,24 @@ export default function WeatherForecast() {
   return (
     <div className={`container-fluid text-center vh-100 ${styles.bg}`}>
       <h1 className="my-4 display-3">🌎 {forecastResult.location} の天気予報</h1>
+
+      {/* 手動入力欄 */}
+      <div className="mx-auto mb-4" style={{ maxWidth: "400px" }}>
+  <div className="input-group shadow-sm">
+    <input
+      type="text"
+      className="form-control form-control-lg rounded-start-pill border-primary"
+      placeholder="都市名を入力 (例: Tokyo)"
+      value={city}
+      onChange={(e) => setCity(e.target.value)}
+    />
+    <button className="btn btn-primary rounded-end-pill px-4" onClick={handleFetchByCity}>
+      <FontAwesomeIcon icon={faSearch} className="me-2" />
+      検索
+    </button>
+  </div>
+</div>
+
       <div
         className="card shadow-lg rounded-4 bg-light bg-opacity-75 mx-auto"
         style={{ maxWidth: "700px" }}
